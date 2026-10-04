@@ -49,7 +49,7 @@ export function detectCRT(htf:Candle[],itf:Candle[],ltf:Candle[],rr1=1.8,rr2=3):
   const ltfOK=ltfBullConfirm(ltf)&&(hasBullFvg(ltf)||hasBullOB(itf));
   if(swept&&bullC2&&bullC3&&ltfOK){
    const entry=ltf[ltf.length-1].close,stop=Math.min(c2.low,c1.low),risk=entry-stop;
-   if(risk>0)return{direction:"LONG",status:"ENTRY CONFIRMED",entry,stop,tp1:entry+risk*rr1,tp2:entry+risk*rr2,keyLevel:oldLow.price,keyType:"Old Low",htfBias,sweepTime:c2.time,confirmedTime:ltf[ltf.length-1].time,reason:["HTF bullish/neutral context","Old Low swept","C2 closed back above Old Low","ITF C1/C2/C3 structure","LTF bullish confirmation","OB/FVG context"]};
+   if(risk>0)return{direction:"LONG",status:"ENTRY CONFIRMED",entry,stop,tp1:entry+risk*rr1,tp2:entry+risk*rr2,keyLevel:oldLow.price,keyType:"Old Low",htfBias,sweepTime:c2.time,confirmedTime:ltf[ltf.length-1].time,reason:["HTF bullish/neutral context","Old Low swept","C2 closed back above Old Low","ITF C1/C2/C3 structure","LTF bullish confirmation","OB/FVG context"],c1Time:c1.time,c2Time:c2.time,c3Time:c3.time,crtTime:c2.time,oldLevelTime:itf[oldLow.index].time};
   }
  }
  if(oldHigh&&bearContext){
@@ -57,7 +57,7 @@ export function detectCRT(htf:Candle[],itf:Candle[],ltf:Candle[],rr1=1.8,rr2=3):
   const ltfOK=ltfBearConfirm(ltf)&&(hasBearFvg(ltf)||hasBearOB(itf));
   if(swept&&bearC2&&bearC3&&ltfOK){
    const entry=ltf[ltf.length-1].close,stop=Math.max(c2.high,c1.high),risk=stop-entry;
-   if(risk>0)return{direction:"SHORT",status:"ENTRY CONFIRMED",entry,stop,tp1:entry-risk*rr1,tp2:entry-risk*rr2,keyLevel:oldHigh.price,keyType:"Old High",htfBias,sweepTime:c2.time,confirmedTime:ltf[ltf.length-1].time,reason:["HTF bearish/neutral context","Old High swept","C2 closed back below Old High","ITF C1/C2/C3 structure","LTF bearish confirmation","OB/FVG context"]};
+   if(risk>0)return{direction:"SHORT",status:"ENTRY CONFIRMED",entry,stop,tp1:entry-risk*rr1,tp2:entry-risk*rr2,keyLevel:oldHigh.price,keyType:"Old High",htfBias,sweepTime:c2.time,confirmedTime:ltf[ltf.length-1].time,reason:["HTF bearish/neutral context","Old High swept","C2 closed back below Old High","ITF C1/C2/C3 structure","LTF bearish confirmation","OB/FVG context"],c1Time:c1.time,c2Time:c2.time,c3Time:c3.time,crtTime:c2.time,oldLevelTime:itf[oldHigh.index].time};
   }
  }
  return null;
