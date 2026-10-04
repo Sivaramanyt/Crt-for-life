@@ -1,78 +1,23 @@
 "use client";
-
-import {useEffect,useRef,useState} from "react";
-import {createChart,ColorType,IChartApi,ISeriesApi,UTCTimestamp} from "lightweight-charts";
-import {PAIRS,fetchFuturesKlines,futuresWsUrl} from "../lib/binance";
-import {detectCRT} from "../lib/crt";
-import type {Candle,Setup} from "../lib/types";
+import{useEffect,useRef,useState}from"react";
+import{createChart,ColorType,IChartApi,ISeriesApi,UTCTimestamp}from"lightweight-charts";
+import{PAIRS,fetchFuturesKlines,futuresMiniTickerUrl,futuresWsUrl}from"../lib/binance";
+import{detectCRT}from"../lib/crt";
+import type{Candle,Setup}from"../lib/types";
 
 export default function Home(){
-  const [selected,setSelected]=useState("BTCUSDT");
-  const [interval,setIntervalValue]=useState("5m");
-  const [candles,setCandles]=useState<Candle[]>([]);
-  const [setup,setSetup]=useState<Setup|null>(null);
-  const [connected,setConnected]=useState(false);
-  const ref=useRef<HTMLDivElement>(null);
-  const chart=useRef<IChartApi|null>(null);
-  const series=useRef<ISeriesApi<"Candlestick">|null>(null);
-  const lines=useRef<any[]>([]);
-
-  useEffect(()=>{
-    if(!ref.current) return;
-    const c=createChart(ref.current,{layout:{background:{type:ColorType.Solid,color:"#0b0e11"},textColor:"#9ba3ad"},grid:{vertLines:{color:"#161a1f"},horzLines:{color:"#161a1f"}},crosshair:{mode:1},rightPriceScale:{borderColor:"#20242a"},timeScale:{borderColor:"#20242a",timeVisible:true,secondsVisible:false}});
-    chart.current=c;
-    series.current=c.addCandlestickSeries({upColor:"#19c37d",downColor:"#f45b69",borderVisible:false,wickUpColor:"#19c37d",wickDownColor:"#f45b69"});
-    const resize=()=>ref.current&&c.applyOptions({width:ref.current.clientWidth,height:ref.current.clientHeight});
-    resize(); window.addEventListener("resize",resize);
-    return()=>{window.removeEventListener("resize",resize);c.remove();chart.current=null;series.current=null};
-  },[]);
-
-  useEffect(()=>{
-    let cancelled=false; let ws:WebSocket|undefined; let retry=0; let timer:ReturnType<typeof setTimeout>|undefined;
-    const connect=()=>{
-      if(cancelled)return;
-      ws=new WebSocket(futuresWsUrl(selected,interval));
-      ws.onopen=()=>{retry=0;setConnected(true)};
-      ws.onclose=()=>{setConnected(false);if(!cancelled){retry=Math.min(retry+1,6);timer=setTimeout(connect,Math.min(1000*2**retry,15000))}};
-      ws.onerror=()=>setConnected(false);
-      ws.onmessage=(e)=>{
-        const k=JSON.parse(e.data).k;if(!k)return;
-        const candle={time:Math.floor(k.t/1000),open:+k.o,high:+k.h,low:+k.l,close:+k.c,volume:+k.v};
-        series.current?.update({...candle,time:candle.time as UTCTimestamp});
-        setCandles(prev=>{const next=[...prev];const i=next.length-1;if(next[i]?.time===candle.time)next[i]=candle;else next.push(candle);setSetup(detectCRT(next));return next});
-      };
-    };
-    (async()=>{
-      try{
-        const data=await fetchFuturesKlines(selected,interval,500);if(cancelled)return;
-        setCandles(data);setSetup(detectCRT(data));
-        series.current?.setData(data.map(x=>({...x,time:x.time as UTCTimestamp})));
-        chart.current?.timeScale().fitContent();
-        connect();
-      }catch(err){console.error(err);setConnected(false)}
-    })();
-    return()=>{cancelled=true;clearTimeout(timer);ws?.close();setConnected(false)};
-  },[selected,interval]);
-
-  useEffect(()=>{
-    lines.current.forEach(l=>{try{series.current?.removePriceLine(l)}catch{}});
-    lines.current=[];
-    if(!setup||!series.current)return;
-    const add=(price:number,title:string,style:number)=>lines.current.push(series.current!.createPriceLine({price,color:setup.direction==="LONG"?"#19c37d":"#f45b69",lineWidth:2,lineStyle:style,axisLabelVisible:true,title}));
-    add(setup.entry,"ENTRY",0);add(setup.stop,"SL",2);add(setup.tp1,"TP1",1);add(setup.tp2,"TP2",1);add(setup.keyLevel,setup.keyType,2);
-  },[setup]);
-
-  const s=setup;
-  return <div className="app">
-    <div className="top"><div className="brand">CRT FUTURES</div><div className="live">{connected?"● LIVE":"○ CONNECTING"}</div></div>
-    <div className="body">
-      <aside className="watch"><h3>WATCHLIST · BINANCE FUTURES</h3>{PAIRS.map(p=><button key={p.symbol} className={"pair "+(selected===p.symbol?"active":"")} onClick={()=>setSelected(p.symbol)}><strong>{p.display}</strong><span>{p.name}</span></button>)}</aside>
-      <main className="main">
-        <div className="toolbar"><span className="symbol">{selected}.P</span>{["1m","5m","15m","1h","4h","1d"].map(x=><button key={x} onClick={()=>setIntervalValue(x)}>{x}</button>)}</div>
-        <div className="chartWrap"><div ref={ref} className="chart"/>
-          {s&&<div className="panel"><h4 className={s.direction==="LONG"?"green":"red"}>{s.direction} · {s.status}</h4><div className="row"><span>Entry</span><b>{s.entry.toPrecision(7)}</b></div><div className="row"><span>SL</span><b>{s.stop.toPrecision(7)}</b></div><div className="row"><span>TP1</span><b>{s.tp1.toPrecision(7)}</b></div><div className="row"><span>TP2</span><b>{s.tp2.toPrecision(7)}</b></div><div className="row"><span>Key</span><b>{s.keyType}</b></div><div className="reason">{s.reason.map((r,i)=><div key={i}>✓ {r}</div>)}</div></div>}
-        </div>
-      </main>
-    </div>
-  </div>;
+ const[selected,setSelected]=useState("BTCUSDT"),[interval,setIntervalValue]=useState("5m"),[candles,setCandles]=useState<Candle[]>([]),[setup,setSetup]=useState<Setup|null>(null),[connected,setConnected]=useState(false),[prices,setPrices]=useState<Record<string,{price:number;change:number}>>({});
+ const ref=useRef<HTMLDivElement>(null),chart=useRef<IChartApi|null>(null),series=useRef<ISeriesApi<"Candlestick">|null>(null),lines=useRef<any[]>([]);
+ const runAnalysis=async(live:Candle[])=>{
+  try{const[htf,itf]=await Promise.all([fetchFuturesKlines(selected,"4h",250),fetchFuturesKlines(selected,"1h",250)]);setSetup(detectCRT(htf,itf,live));}catch{setSetup(null)}
+ };
+ useEffect(()=>{if(!ref.current)return;const c=createChart(ref.current,{layout:{background:{type:ColorType.Solid,color:"#0b0e11"},textColor:"#9ba3ad"},grid:{vertLines:{color:"#161a1f"},horzLines:{color:"#161a1f"}},crosshair:{mode:1},rightPriceScale:{borderColor:"#20242a"},timeScale:{borderColor:"#20242a",timeVisible:true,secondsVisible:false}});chart.current=c;series.current=c.addCandlestickSeries({upColor:"#19c37d",downColor:"#f45b69",borderVisible:false,wickUpColor:"#19c37d",wickDownColor:"#f45b69"});const resize=()=>ref.current&&c.applyOptions({width:ref.current.clientWidth,height:ref.current.clientHeight});resize();window.addEventListener("resize",resize);return()=>{window.removeEventListener("resize",resize);c.remove()};},[]);
+ useEffect(()=>{let cancel=false,ws:WebSocket|undefined,retry=0,timer:ReturnType<typeof setTimeout>|undefined;
+ const connect=()=>{if(cancel)return;ws=new WebSocket(futuresWsUrl(selected,interval));ws.onopen=()=>{retry=0;setConnected(true)};ws.onclose=()=>{setConnected(false);if(!cancel){retry=Math.min(6,retry+1);timer=setTimeout(connect,Math.min(15000,1000*2**retry))}};ws.onerror=()=>setConnected(false);ws.onmessage=e=>{const k=JSON.parse(e.data).k;if(!k)return;const x={time:Math.floor(k.t/1000),open:+k.o,high:+k.h,low:+k.l,close:+k.c,volume:+k.v};series.current?.update({...x,time:x.time as UTCTimestamp});setCandles(prev=>{const n=[...prev],i=n.length-1;if(n[i]?.time===x.time)n[i]=x;else n.push(x);runAnalysis(n);return n})}};
+ (async()=>{try{const d=await fetchFuturesKlines(selected,interval,500);if(cancel)return;setCandles(d);series.current?.setData(d.map(x=>({...x,time:x.time as UTCTimestamp})));chart.current?.timeScale().fitContent();await runAnalysis(d);connect()}catch{setConnected(false)}})();
+ return()=>{cancel=true;clearTimeout(timer);ws?.close();setConnected(false)}},[selected,interval]);
+ useEffect(()=>{const ws=new WebSocket(futuresMiniTickerUrl());ws.onmessage=e=>{const m=JSON.parse(e.data).data;if(!m)return;setPrices(p=>({...p,[m.s]:{price:+m.c,change:+m.P}}))};return()=>ws.close()},[]);
+ useEffect(()=>{lines.current.forEach(l=>{try{series.current?.removePriceLine(l)}catch{}});lines.current=[];if(!setup||!series.current)return;const add=(p:number,t:string)=>lines.current.push(series.current!.createPriceLine({price:p,color:setup.direction==="LONG"?"#19c37d":"#f45b69",lineWidth:2,axisLabelVisible:true,title:t}));add(setup.entry,"ENTRY");add(setup.stop,"SL");add(setup.tp1,"TP1");add(setup.tp2,"TP2");add(setup.keyLevel,setup.keyType)},[setup]);
+ const s=setup;
+ return <div className="app"><div className="top"><div className="brand">CRT FUTURES</div><div className="live">{connected?"● LIVE":"○ CONNECTING"}</div></div><div className="body"><aside className="watch"><h3>BINANCE FUTURES</h3>{PAIRS.map(p=><button key={p.symbol} className={"pair "+(selected===p.symbol?"active":"")} onClick={()=>setSelected(p.symbol)}><strong>{p.display}</strong><span>{p.name} {prices[p.symbol]?prices[p.symbol].price.toString():"—"} <i className={(prices[p.symbol]?.change??0)>=0?"green":"red"}>{prices[p.symbol]?((prices[p.symbol].change>=0?"+":"")+prices[p.symbol].change.toFixed(2)+"%"):""}</i></span></button>)}</aside><main className="main"><div className="toolbar"><span className="symbol">{selected}.P</span>{["1m","5m","15m","1h","4h","1d"].map(x=><button key={x} onClick={()=>setIntervalValue(x)}>{x}</button>)}<span className="model">CRT: 4H → 1H → 5M · TP1 1.8R · TP2 3R</span></div><div className="chartWrap"><div ref={ref} className="chart"/>{s&&<div className="panel"><h4 className={s.direction==="LONG"?"green":"red"}>{s.direction} · {s.status}</h4><div className="row"><span>Entry</span><b>{s.entry.toPrecision(8)}</b></div><div className="row"><span>SL</span><b>{s.stop.toPrecision(8)}</b></div><div className="row"><span>TP1</span><b>{s.tp1.toPrecision(8)}</b></div><div className="row"><span>TP2</span><b>{s.tp2.toPrecision(8)}</b></div><div className="row"><span>HTF</span><b>{s.htfBias}</b></div><div className="row"><span>Key</span><b>{s.keyType}</b></div><div className="reason">{s.reason.map((r,i)=><div key={i}>✓ {r}</div>)}</div></div>}</div></main></div></div>
 }
